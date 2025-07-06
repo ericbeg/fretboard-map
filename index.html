@@ -83,6 +83,29 @@
     <script>
         const svgNS = "http://www.w3.org/2000/svg";
         const fretboardContainer = document.getElementById('fretboard-container');
+        let midiOutput = null;
+
+        if (navigator.requestMIDIAccess) {
+            navigator.requestMIDIAccess()
+                .then(onMIDISuccess, onMIDIFailure);
+        } else {
+            console.log('Web MIDI API is not supported in this browser.');
+        }
+
+        function onMIDISuccess(midiAccess) {
+            const outputs = midiAccess.outputs.values();
+            for (let output of outputs) {
+                midiOutput = output;
+                break; 
+            }
+            if (!midiOutput) {
+                console.log("No MIDI output devices found.");
+            }
+        }
+
+        function onMIDIFailure() {
+            console.log('Could not access your MIDI devices.');
+        }
 
         const stringNotes = ['E', 'A', 'D', 'G', 'B', 'E'];
         const numFrets = 15;
@@ -133,6 +156,20 @@
             const openNoteIndex = noteToIndex[stringNotes[stringIndex]];
             const noteIndex = (openNoteIndex + fret) % 12;
             return notes[noteIndex];
+        }
+
+        function getMidiNote(stringIndex, fret) {
+            const openStringMidi = [40, 45, 50, 55, 59, 64];
+            return openStringMidi[stringIndex] + fret;
+        }
+
+        function playNote(note, velocity = 127, duration = 500) {
+            if (midiOutput) {
+                midiOutput.send([0x90, note, velocity]);
+                setTimeout(() => {
+                    midiOutput.send([0x80, note, 0]);
+                }, duration);
+            }
         }
 
         function getContrastYIQ(hexcolor){
@@ -309,6 +346,11 @@
                             fillColor = boomwhackerColors[foundNote.note];
                         }
 
+                        const g = document.createElementNS(svgNS, 'g');
+                        g.style.cursor = 'pointer';
+                        g.addEventListener('click', () => playNote(getMidiNote(stringIndex, fret + 1)));
+                        svg.appendChild(g);
+
                         const circle = document.createElementNS(svgNS, 'circle');
                         circle.setAttribute('cx', x);
                         circle.setAttribute('cy', y);
@@ -316,7 +358,7 @@
                         circle.setAttribute('fill', fillColor);
                         circle.setAttribute('stroke', '#121212');
                         circle.setAttribute('stroke-width', '2');
-                        svg.appendChild(circle);
+                        g.appendChild(circle);
 
                         const text = document.createElementNS(svgNS, 'text');
                         text.setAttribute('x', x);
@@ -327,7 +369,7 @@
                         text.setAttribute('font-weight', 'bold');
                         text.setAttribute('fill', getContrastYIQ(fillColor));
                         text.textContent = noteAtFret;
-                        svg.appendChild(text);
+                        g.appendChild(text);
                     }
                 }
             }
