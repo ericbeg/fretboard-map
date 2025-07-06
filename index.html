@@ -239,6 +239,20 @@
 
             const topStringY = fretboardHeight - (stringNotes.length * stringSpacing);
             const bottomStringY = fretboardHeight - (1 * stringSpacing);
+            const dotFrets = [3, 5, 7, 9, 12];
+
+            dotFrets.forEach(fret => {
+                if (fret <= numFrets) {
+                    const rectX = fretboardMargin + (fret - 1) * fretWidth;
+                    const rect = document.createElementNS(svgNS, 'rect');
+                    rect.setAttribute('x', rectX);
+                    rect.setAttribute('y', topStringY);
+                    rect.setAttribute('width', fretWidth);
+                    rect.setAttribute('height', bottomStringY - topStringY);
+                    rect.setAttribute('fill', 'rgba(0,0,0,0.1)');
+                    svg.appendChild(rect);
+                }
+            });
 
             for (let i = 0; i <= numFrets; i++) {
                 const x = fretboardMargin + i * fretWidth;
@@ -264,7 +278,6 @@
                 svg.appendChild(line);
             }
 
-            const dotFrets = [3, 5, 7, 9, 12];
             dotFrets.forEach(fret => {
                 if (fret <= numFrets) {
                     const x = fretboardMargin + fret * fretWidth - (fretWidth / 2);
