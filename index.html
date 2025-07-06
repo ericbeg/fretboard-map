@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Fretboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        label {
+            margin-right: 10px;
+        }
+        input[type="text"], select {
+            padding: 10px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Interactive Fretboard</h1>
+        <div class="control-group">
+            <label><input type="radio" name="mode" value="chords" checked> Chords</label>
+            <label><input type="radio" name="mode" value="scales"> Scales</label>
+        </div>
+        <div id="chords-controls" class="control-group">
+            <label for="chordInput">Enter a chord (e.g., C, Am, G7):</label>
+            <input type="text" id="chordInput" placeholder="Enter chord">
+        </div>
+        <div id="scales-controls" class="control-group" style="display: none;">
+            <label for="keySelect">Key:</label>
+            <select id="keySelect"></select>
+            <label for="scaleSelect">Scale:</label>
+            <select id="scaleSelect"></select>
+        </div>
+    </div>
+    <canvas id="fretboardCanvas" width="800" height="250"></canvas>
+
+    <script>
+        const canvas = document.getElementById('fretboardCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const stringNotes = ['E', 'A', 'D', 'G', 'B', 'E'];
+        const numFrets = 15;
+        const fretWidth = canvas.width / numFrets;
+        const stringSpacing = canvas.height / (stringNotes.length + 1);
+
+        const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const noteToIndex = {
+            'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4, 'F': 5, 'F#': 6, 'Gb': 6,
+            'G': 7, 'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11, 'Cb': 11, 'Fb': 4
+        };
+
+        const boomwhackerColors = {
+            'C': '#ff0000', 'C#': '#ff00ff', 'D': '#ff8000', 'D#': '#8000ff', 'E': '#ffff00',
+            'F': '#008000', 'F#': '#00ff00', 'G': '#00ffff', 'G#': '#0000ff', 'A': '#800080',
+            'A#': '#ff0080', 'B': '#ffc0cb'
+        };
+
+        const chordIntervals = {
+            'major': [0, 4, 7], 'minor': [0, 3, 7], '7': [0, 4, 7, 10], 'maj7': [0, 4, 7, 11],
+            'm7': [0, 3, 7, 10], 'dim': [0, 3, 6], 'aug': [0, 4, 8], 'sus2': [0, 2, 7],
+            'sus4': [0, 5, 7], 'add9': [0, 4, 7, 2],
+        };
+
+        const scaleIntervals = {
+            'major': [0, 2, 4, 5, 7, 9, 11],
+            'natural_minor': [0, 2, 3, 5, 7, 8, 10],
+            'harmonic_minor': [0, 2, 3, 5, 7, 8, 11],
+            'melodic_minor': [0, 2, 3, 5, 7, 9, 11],
+            'major_pentatonic': [0, 2, 4, 7, 9],
+            'minor_pentatonic': [0, 3, 5, 7, 10],
+            'blues': [0, 3, 5, 6, 7, 10],
+        };
+
+        function getNoteAtFret(stringIndex, fret) {
+            const openNoteIndex = noteToIndex[stringNotes[stringIndex]];
+            const noteIndex = (openNoteIndex + fret) % 12;
+            return notes[noteIndex];
+        }
+
+        function drawFretboard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const topStringY = canvas.height - (stringNotes.length * stringSpacing);
+            const bottomStringY = canvas.height - (1 * stringSpacing);
+
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = 2;
+            for (let i = 0; i <= numFrets; i++) {
+                const x = i * fretWidth;
+                ctx.beginPath();
+                ctx.moveTo(x, topStringY);
+                ctx.lineTo(x, bottomStringY);
+                ctx.stroke();
+            }
+
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < stringNotes.length; i++) {
+                const y = canvas.height - ((i + 1) * stringSpacing);
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            const dotFrets = [3, 5, 7, 9, 12];
+            ctx.fillStyle = '#ccc';
+            dotFrets.forEach(fret => {
+                if (fret <= numFrets) {
+                    const x = fret * fretWidth - (fretWidth / 2);
+                    const y = canvas.height / 2;
+                    if (fret === 12) {
+                        ctx.beginPath();
+                        ctx.arc(x, y - 15, 5, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(x, y + 15, 5, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        ctx.beginPath();
+                        ctx.arc(x, y, 5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            });
+        }
+
+        function parseChord(chordString) {
+            const rootMatch = chordString.match(/^[A-G][b#]?/);
+            if (!rootMatch) return null;
+            const root = rootMatch[0];
+            let remaining = chordString.substring(root.length);
+            let quality = 'major'; // Default
+
+            const qualityMap = {
+                'm': 'minor', 'min': 'minor', 'maj7': 'maj7', 'M7': 'maj7', '7': '7',
+                'dim': 'dim', 'aug': 'aug', 'sus2': 'sus2', 'sus4': 'sus4', 'add9': 'add9'
+            };
+
+            for (const key in qualityMap) {
+                if (remaining.startsWith(key)) {
+                    quality = qualityMap[key];
+                    break;
+                }
+            }
+            return { root, quality };
+        }
+
+        function getChordNotes(root, quality) {
+            const rootIndex = noteToIndex[root];
+            if (rootIndex === undefined) return [];
+            const intervals = chordIntervals[quality];
+            if (!intervals) return [];
+
+            return intervals.map(interval => {
+                const noteIndex = (rootIndex + interval) % 12;
+                let degree = 'other';
+                switch (interval) {
+                    case 0: degree = 'root'; break;
+                    case 3: degree = 'minor3rd'; break;
+                    case 4: degree = 'major3rd'; break;
+                    case 7: degree = 'perfect5th'; break;
+                    case 6: degree = 'diminished5th'; break;
+                    case 8: degree = 'augmented5th'; break;
+                    case 10: degree = 'minor7th'; break;
+                    case 11: degree = 'major7th'; break;
+                    case 2: degree = 'major2nd'; break;
+                    case 5: degree = 'perfect4th'; break;
+                }
+                return { note: notes[noteIndex], degree: degree };
+            });
+        }
+
+        function getScaleNotes(key, scale) {
+            const rootIndex = noteToIndex[key];
+            if (rootIndex === undefined) return [];
+            const intervals = scaleIntervals[scale];
+            if (!intervals) return [];
+
+            return intervals.map(interval => {
+                const noteIndex = (rootIndex + interval) % 12;
+                const degree = interval === 0 ? 'root' : 'other';
+                return { note: notes[noteIndex], degree: degree };
+            });
+        }
+
+        function updateDisplay() {
+            drawFretboard();
+            const mode = document.querySelector('input[name="mode"]:checked').value;
+            let notesToHighlight = [];
+
+            if (mode === 'chords') {
+                const chordInput = document.getElementById('chordInput').value.trim();
+                if (chordInput) {
+                    const parsed = parseChord(chordInput);
+                    if (parsed) {
+                        notesToHighlight = getChordNotes(parsed.root, parsed.quality);
+                    }
+                }
+            } else { // scales
+                const key = document.getElementById('keySelect').value;
+                const scale = document.getElementById('scaleSelect').value;
+                notesToHighlight = getScaleNotes(key, scale);
+            }
+
+            if (notesToHighlight.length === 0) return;
+
+            for (let stringIndex = 0; stringIndex < stringNotes.length; stringIndex++) {
+                for (let fret = 0; fret <= numFrets; fret++) {
+                    const noteAtFret = getNoteAtFret(stringIndex, fret);
+                    const foundNote = notesToHighlight.find(n => n.note === noteAtFret);
+
+                    if (foundNote) {
+                        const x = (fret === 0 ? fretWidth / 4 : fret * fretWidth - (fretWidth / 2));
+                        const y = canvas.height - ((stringIndex + 1) * stringSpacing);
+                        
+                        let fillColor = '#333333'; // Default color
+                        if (mode === 'chords') {
+                            switch (foundNote.degree) {
+                                case 'root': fillColor = '#ff0000'; break;
+                                case 'major3rd': case 'minor3rd': fillColor = '#0000ff'; break;
+                                case 'perfect5th': case 'diminished5th': case 'augmented5th': fillColor = '#008000'; break;
+                            }
+                        } else { // scales
+                            fillColor = boomwhackerColors[foundNote.note];
+                        }
+
+                        ctx.beginPath();
+                        ctx.arc(x, y, 10, 0, Math.PI * 2);
+                        ctx.fillStyle = fillColor;
+                        ctx.fill();
+
+                        ctx.fillStyle = 'white';
+                        ctx.font = '10px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(noteAtFret, x, y);
+                    }
+                }
+            }
+        }
+
+        function setupUI() {
+            const keySelect = document.getElementById('keySelect');
+            const scaleSelect = document.getElementById('scaleSelect');
+            
+            notes.forEach(note => {
+                const option = document.createElement('option');
+                option.value = note;
+                option.textContent = note;
+                keySelect.appendChild(option);
+            });
+
+            for (const scale in scaleIntervals) {
+                const option = document.createElement('option');
+                option.value = scale;
+                option.textContent = scale.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                scaleSelect.appendChild(option);
+            }
+
+            document.querySelectorAll('input[name="mode"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    const isChords = e.target.value === 'chords';
+                    document.getElementById('chords-controls').style.display = isChords ? 'block' : 'none';
+                    document.getElementById('scales-controls').style.display = isChords ? 'none' : 'block';
+                    updateDisplay();
+                });
+            });
+
+            document.getElementById('chordInput').addEventListener('input', updateDisplay);
+            keySelect.addEventListener('change', updateDisplay);
+            scaleSelect.addEventListener('change', updateDisplay);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupUI();
+            updateDisplay();
+        });
+    </script>
+</body>
+</html>
