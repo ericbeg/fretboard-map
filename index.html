@@ -33,7 +33,7 @@
             border-radius: 4px;
             width: 200px;
         }
-        canvas {
+        svg {
             border: 1px solid #ccc;
             background-color: #f9f9f9;
         }
@@ -57,17 +57,19 @@
             <select id="scaleSelect"></select>
         </div>
     </div>
-    <canvas id="fretboardCanvas" width="850" height="250"></canvas>
+    <div id="fretboard-container"></div>
 
     <script>
-        const canvas = document.getElementById('fretboardCanvas');
-        const ctx = canvas.getContext('2d');
+        const svgNS = "http://www.w3.org/2000/svg";
+        const fretboardContainer = document.getElementById('fretboard-container');
 
         const stringNotes = ['E', 'A', 'D', 'G', 'B', 'E'];
         const numFrets = 15;
+        const fretboardWidth = 850;
+        const fretboardHeight = 250;
         const fretboardMargin = 50;
-        const fretWidth = (canvas.width - fretboardMargin) / numFrets;
-        const stringSpacing = canvas.height / (stringNotes.length + 1);
+        const fretWidth = (fretboardWidth - fretboardMargin) / numFrets;
+        const stringSpacing = fretboardHeight / (stringNotes.length + 1);
 
         const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
         const noteToIndex = {
@@ -122,47 +124,64 @@
         }
 
         function drawFretboard() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const topStringY = canvas.height - (stringNotes.length * stringSpacing);
-            const bottomStringY = canvas.height - (1 * stringSpacing);
+            fretboardContainer.innerHTML = '';
+            const svg = document.createElementNS(svgNS, "svg");
+            svg.setAttribute('width', fretboardWidth);
+            svg.setAttribute('height', fretboardHeight);
+            fretboardContainer.appendChild(svg);
 
-            ctx.strokeStyle = '#888';
-            ctx.lineWidth = 2;
+            const topStringY = fretboardHeight - (stringNotes.length * stringSpacing);
+            const bottomStringY = fretboardHeight - (1 * stringSpacing);
+
             for (let i = 0; i <= numFrets; i++) {
                 const x = fretboardMargin + i * fretWidth;
-                ctx.beginPath();
-                ctx.moveTo(x, topStringY);
-                ctx.lineTo(x, bottomStringY);
-                ctx.stroke();
+                const line = document.createElementNS(svgNS, 'line');
+                line.setAttribute('x1', x);
+                line.setAttribute('y1', topStringY);
+                line.setAttribute('x2', x);
+                line.setAttribute('y2', bottomStringY);
+                line.setAttribute('stroke', '#888');
+                line.setAttribute('stroke-width', '2');
+                svg.appendChild(line);
             }
 
-            ctx.strokeStyle = '#555';
-            ctx.lineWidth = 1;
             for (let i = 0; i < stringNotes.length; i++) {
-                const y = canvas.height - ((i + 1) * stringSpacing);
-                ctx.beginPath();
-                ctx.moveTo(fretboardMargin, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
+                const y = fretboardHeight - ((i + 1) * stringSpacing);
+                const line = document.createElementNS(svgNS, 'line');
+                line.setAttribute('x1', fretboardMargin);
+                line.setAttribute('y1', y);
+                line.setAttribute('x2', fretboardWidth);
+                line.setAttribute('y2', y);
+                line.setAttribute('stroke', '#555');
+                line.setAttribute('stroke-width', '1');
+                svg.appendChild(line);
             }
 
             const dotFrets = [3, 5, 7, 9, 12];
-            ctx.fillStyle = '#ccc';
             dotFrets.forEach(fret => {
                 if (fret <= numFrets) {
                     const x = fretboardMargin + fret * fretWidth - (fretWidth / 2);
-                    const y = canvas.height / 2;
+                    const y = fretboardHeight / 2;
                     if (fret === 12) {
-                        ctx.beginPath();
-                        ctx.arc(x, y - 15, 5, 0, Math.PI * 2);
-                        ctx.fill();
-                        ctx.beginPath();
-                        ctx.arc(x, y + 15, 5, 0, Math.PI * 2);
-                        ctx.fill();
+                        const circle1 = document.createElementNS(svgNS, 'circle');
+                        circle1.setAttribute('cx', x);
+                        circle1.setAttribute('cy', y - 15);
+                        circle1.setAttribute('r', 5);
+                        circle1.setAttribute('fill', '#ccc');
+                        svg.appendChild(circle1);
+                        const circle2 = document.createElementNS(svgNS, 'circle');
+                        circle2.setAttribute('cx', x);
+                        circle2.setAttribute('cy', y + 15);
+                        circle2.setAttribute('r', 5);
+                        circle2.setAttribute('fill', '#ccc');
+                        svg.appendChild(circle2);
                     } else {
-                        ctx.beginPath();
-                        ctx.arc(x, y, 5, 0, Math.PI * 2);
-                        ctx.fill();
+                        const circle = document.createElementNS(svgNS, 'circle');
+                        circle.setAttribute('cx', x);
+                        circle.setAttribute('cy', y);
+                        circle.setAttribute('r', 5);
+                        circle.setAttribute('fill', '#ccc');
+                        svg.appendChild(circle);
                     }
                 }
             });
@@ -229,6 +248,7 @@
 
         function updateDisplay() {
             drawFretboard();
+            const svg = fretboardContainer.querySelector('svg');
             const mode = document.querySelector('input[name="mode"]:checked').value;
             let notesToHighlight = [];
 
@@ -255,7 +275,7 @@
 
                     if (foundNote) {
                         const x = fretboardMargin + (fret + 1) * fretWidth - (fretWidth / 2);
-                        const y = canvas.height - ((stringIndex + 1) * stringSpacing);
+                        const y = fretboardHeight - ((stringIndex + 1) * stringSpacing);
                         
                         let fillColor = '#333333'; // Default color
                         if (mode === 'chords') {
@@ -268,16 +288,22 @@
                             fillColor = boomwhackerColors[foundNote.note];
                         }
 
-                        ctx.beginPath();
-                        ctx.arc(x, y, 10, 0, Math.PI * 2);
-                        ctx.fillStyle = fillColor;
-                        ctx.fill();
+                        const circle = document.createElementNS(svgNS, 'circle');
+                        circle.setAttribute('cx', x);
+                        circle.setAttribute('cy', y);
+                        circle.setAttribute('r', 10);
+                        circle.setAttribute('fill', fillColor);
+                        svg.appendChild(circle);
 
-                        ctx.fillStyle = getContrastYIQ(fillColor);
-                        ctx.font = '10px Arial';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(noteAtFret, x, y);
+                        const text = document.createElementNS(svgNS, 'text');
+                        text.setAttribute('x', x);
+                        text.setAttribute('y', y);
+                        text.setAttribute('dy', '0.3em');
+                        text.setAttribute('text-anchor', 'middle');
+                        text.setAttribute('font-size', '10px');
+                        text.setAttribute('fill', getContrastYIQ(fillColor));
+                        text.textContent = noteAtFret;
+                        svg.appendChild(text);
                     }
                 }
             }
