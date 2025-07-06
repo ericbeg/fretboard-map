@@ -58,6 +58,9 @@
             background: linear-gradient(to right, #3a3a3a, #2c2c2c);
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
+        #midi-controls {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -77,12 +80,17 @@
             <label for="scaleSelect">Scale:</label>
             <select id="scaleSelect"></select>
         </div>
+        <div id="midi-controls" class="control-group">
+            <label for="midiSelect">MIDI Output:</label>
+            <select id="midiSelect"></select>
+        </div>
     </div>
     <div id="fretboard-container"></div>
 
     <script>
         const svgNS = "http://www.w3.org/2000/svg";
         const fretboardContainer = document.getElementById('fretboard-container');
+        let midiAccess = null;
         let midiOutput = null;
 
         if (navigator.requestMIDIAccess) {
@@ -92,15 +100,31 @@
             console.log('Web MIDI API is not supported in this browser.');
         }
 
-        function onMIDISuccess(midiAccess) {
+        function onMIDISuccess(access) {
+            midiAccess = access;
+            const midiControls = document.getElementById('midi-controls');
+            const midiSelect = document.getElementById('midiSelect');
             const outputs = midiAccess.outputs.values();
+            let firstOutput = true;
+
             for (let output of outputs) {
-                midiOutput = output;
-                break; 
+                const option = document.createElement('option');
+                option.value = output.id;
+                option.textContent = output.name;
+                midiSelect.appendChild(option);
+                if (firstOutput) {
+                    midiOutput = output;
+                    firstOutput = false;
+                }
             }
-            if (!midiOutput) {
-                console.log("No MIDI output devices found.");
+
+            if (midiSelect.options.length > 0) {
+                midiControls.style.display = 'flex';
             }
+
+            midiSelect.addEventListener('change', (event) => {
+                midiOutput = midiAccess.outputs.get(event.target.value);
+            });
         }
 
         function onMIDIFailure() {
