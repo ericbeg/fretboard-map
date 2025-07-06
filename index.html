@@ -5,37 +5,58 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Fretboard</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Roboto', sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             margin-top: 20px;
-            background-color: #f4f4f4;
+            background-color: #121212;
+            color: #e0e0e0;
         }
         .container {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background-color: #1e1e1e;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+            width: 90%;
+            max-width: 900px;
+        }
+        h1 {
+            color: #ffffff;
+            font-weight: 700;
             margin-bottom: 20px;
         }
         .control-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
         }
         label {
-            margin-right: 10px;
+            margin-right: 15px;
+            font-weight: 400;
         }
         input[type="text"], select {
-            padding: 10px;
-            margin-right: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: 200px;
+            padding: 12px 15px;
+            margin-right: 15px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background-color: #2c2c2c;
+            color: #e0e0e0;
+            font-size: 16px;
+            flex-grow: 1;
+        }
+        input[type="radio"] {
+            margin-right: 5px;
         }
         svg {
-            border: 1px solid #ccc;
-            background-color: #f9f9f9;
+            border-radius: 8px;
+            background: linear-gradient(to right, #3a3a3a, #2c2c2c);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
     </style>
 </head>
@@ -47,8 +68,8 @@
             <label><input type="radio" name="mode" value="scales"> Scales</label>
         </div>
         <div id="chords-controls" class="control-group">
-            <label for="chordInput">Enter a chord (e.g., C, Am, G7):</label>
-            <input type="text" id="chordInput" placeholder="Enter chord">
+            <label for="chordInput">Chord:</label>
+            <input type="text" id="chordInput" placeholder="e.g., C, Am, G7">
         </div>
         <div id="scales-controls" class="control-group" style="display: none;">
             <label for="keySelect">Key:</label>
@@ -65,7 +86,7 @@
 
         const stringNotes = ['E', 'A', 'D', 'G', 'B', 'E'];
         const numFrets = 15;
-        const fretboardWidth = 850;
+        const fretboardWidth = 900;
         const fretboardHeight = 250;
         const fretboardMargin = 50;
         const fretWidth = (fretboardWidth - fretboardMargin) / numFrets;
@@ -78,9 +99,9 @@
         };
 
         const boomwhackerColors = {
-            'C': '#ff0000', 'C#': '#ff00ff', 'D': '#ff8000', 'D#': '#8000ff', 'E': '#ffff00',
-            'F': '#008000', 'F#': '#00ff00', 'G': '#00ffff', 'G#': '#0000ff', 'A': '#800080',
-            'A#': '#ff0080', 'B': '#ffc0cb'
+            'C': '#d92b2b', 'C#': '#d92b8a', 'D': '#d9822b', 'D#': '#8a2bd9', 'E': '#d9d92b',
+            'F': '#2bd92b', 'F#': '#2bd982', 'G': '#2bd9d9', 'G#': '#2b8ad9', 'A': '#8a2bd9',
+            'A#': '#d92b8a', 'B': '#d9822b'
         };
 
         const chordIntervals = {
@@ -140,8 +161,8 @@
                 line.setAttribute('y1', topStringY);
                 line.setAttribute('x2', x);
                 line.setAttribute('y2', bottomStringY);
-                line.setAttribute('stroke', '#888');
-                line.setAttribute('stroke-width', '2');
+                line.setAttribute('stroke', '#555');
+                line.setAttribute('stroke-width', i === 0 ? '4' : '2');
                 svg.appendChild(line);
             }
 
@@ -152,7 +173,7 @@
                 line.setAttribute('y1', y);
                 line.setAttribute('x2', fretboardWidth);
                 line.setAttribute('y2', y);
-                line.setAttribute('stroke', '#555');
+                line.setAttribute('stroke', '#999');
                 line.setAttribute('stroke-width', '1');
                 svg.appendChild(line);
             }
@@ -165,22 +186,22 @@
                     if (fret === 12) {
                         const circle1 = document.createElementNS(svgNS, 'circle');
                         circle1.setAttribute('cx', x);
-                        circle1.setAttribute('cy', y - 15);
-                        circle1.setAttribute('r', 5);
-                        circle1.setAttribute('fill', '#ccc');
+                        circle1.setAttribute('cy', y - 20);
+                        circle1.setAttribute('r', 6);
+                        circle1.setAttribute('fill', '#777');
                         svg.appendChild(circle1);
                         const circle2 = document.createElementNS(svgNS, 'circle');
                         circle2.setAttribute('cx', x);
-                        circle2.setAttribute('cy', y + 15);
-                        circle2.setAttribute('r', 5);
-                        circle2.setAttribute('fill', '#ccc');
+                        circle2.setAttribute('cy', y + 20);
+                        circle2.setAttribute('r', 6);
+                        circle2.setAttribute('fill', '#777');
                         svg.appendChild(circle2);
                     } else {
                         const circle = document.createElementNS(svgNS, 'circle');
                         circle.setAttribute('cx', x);
                         circle.setAttribute('cy', y);
-                        circle.setAttribute('r', 5);
-                        circle.setAttribute('fill', '#ccc');
+                        circle.setAttribute('r', 6);
+                        circle.setAttribute('fill', '#777');
                         svg.appendChild(circle);
                     }
                 }
@@ -277,12 +298,12 @@
                         const x = fretboardMargin + (fret + 1) * fretWidth - (fretWidth / 2);
                         const y = fretboardHeight - ((stringIndex + 1) * stringSpacing);
                         
-                        let fillColor = '#333333'; // Default color
+                        let fillColor = '#444'; // Default color
                         if (mode === 'chords') {
                             switch (foundNote.degree) {
-                                case 'root': fillColor = '#ff0000'; break;
-                                case 'major3rd': case 'minor3rd': fillColor = '#0000ff'; break;
-                                case 'perfect5th': case 'diminished5th': case 'augmented5th': fillColor = '#008000'; break;
+                                case 'root': fillColor = '#e74c3c'; break;
+                                case 'major3rd': case 'minor3rd': fillColor = '#3498db'; break;
+                                case 'perfect5th': case 'diminished5th': case 'augmented5th': fillColor = '#2ecc71'; break;
                             }
                         } else { // scales
                             fillColor = boomwhackerColors[foundNote.note];
@@ -291,16 +312,19 @@
                         const circle = document.createElementNS(svgNS, 'circle');
                         circle.setAttribute('cx', x);
                         circle.setAttribute('cy', y);
-                        circle.setAttribute('r', 10);
+                        circle.setAttribute('r', 12);
                         circle.setAttribute('fill', fillColor);
+                        circle.setAttribute('stroke', '#121212');
+                        circle.setAttribute('stroke-width', '2');
                         svg.appendChild(circle);
 
                         const text = document.createElementNS(svgNS, 'text');
                         text.setAttribute('x', x);
                         text.setAttribute('y', y);
-                        text.setAttribute('dy', '0.3em');
+                        text.setAttribute('dy', '0.35em');
                         text.setAttribute('text-anchor', 'middle');
-                        text.setAttribute('font-size', '10px');
+                        text.setAttribute('font-size', '12px');
+                        text.setAttribute('font-weight', 'bold');
                         text.setAttribute('fill', getContrastYIQ(fillColor));
                         text.textContent = noteAtFret;
                         svg.appendChild(text);
@@ -330,8 +354,8 @@
             document.querySelectorAll('input[name="mode"]').forEach(radio => {
                 radio.addEventListener('change', (e) => {
                     const isChords = e.target.value === 'chords';
-                    document.getElementById('chords-controls').style.display = isChords ? 'block' : 'none';
-                    document.getElementById('scales-controls').style.display = isChords ? 'none' : 'block';
+                    document.getElementById('chords-controls').style.display = isChords ? 'flex' : 'none';
+                    document.getElementById('scales-controls').style.display = isChords ? 'none' : 'flex';
                     updateDisplay();
                 });
             });
