@@ -57,7 +57,7 @@
             <select id="scaleSelect"></select>
         </div>
     </div>
-    <canvas id="fretboardCanvas" width="800" height="250"></canvas>
+    <canvas id="fretboardCanvas" width="850" height="250"></canvas>
 
     <script>
         const canvas = document.getElementById('fretboardCanvas');
@@ -65,7 +65,8 @@
 
         const stringNotes = ['E', 'A', 'D', 'G', 'B', 'E'];
         const numFrets = 15;
-        const fretWidth = canvas.width / numFrets;
+        const fretboardMargin = 50;
+        const fretWidth = (canvas.width - fretboardMargin) / numFrets;
         const stringSpacing = canvas.height / (stringNotes.length + 1);
 
         const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -119,7 +120,7 @@
             ctx.strokeStyle = '#888';
             ctx.lineWidth = 2;
             for (let i = 0; i <= numFrets; i++) {
-                const x = i * fretWidth;
+                const x = fretboardMargin + i * fretWidth;
                 ctx.beginPath();
                 ctx.moveTo(x, topStringY);
                 ctx.lineTo(x, bottomStringY);
@@ -131,7 +132,7 @@
             for (let i = 0; i < stringNotes.length; i++) {
                 const y = canvas.height - ((i + 1) * stringSpacing);
                 ctx.beginPath();
-                ctx.moveTo(0, y);
+                ctx.moveTo(fretboardMargin, y);
                 ctx.lineTo(canvas.width, y);
                 ctx.stroke();
             }
@@ -140,7 +141,7 @@
             ctx.fillStyle = '#ccc';
             dotFrets.forEach(fret => {
                 if (fret <= numFrets) {
-                    const x = fret * fretWidth - (fretWidth / 2);
+                    const x = fretboardMargin + fret * fretWidth - (fretWidth / 2);
                     const y = canvas.height / 2;
                     if (fret === 12) {
                         ctx.beginPath();
@@ -239,12 +240,12 @@
             if (notesToHighlight.length === 0) return;
 
             for (let stringIndex = 0; stringIndex < stringNotes.length; stringIndex++) {
-                for (let fret = 0; fret <= numFrets; fret++) {
-                    const noteAtFret = getNoteAtFret(stringIndex, fret);
+                for (let fret = -1; fret < numFrets; fret++) {
+                    const noteAtFret = getNoteAtFret(stringIndex, fret + 1);
                     const foundNote = notesToHighlight.find(n => n.note === noteAtFret);
 
                     if (foundNote) {
-                        const x = (fret === 0 ? fretWidth / 4 : fret * fretWidth - (fretWidth / 2));
+                        const x = fretboardMargin + (fret + 1) * fretWidth - (fretWidth / 2);
                         const y = canvas.height - ((stringIndex + 1) * stringSpacing);
                         
                         let fillColor = '#333333'; // Default color
