@@ -89,6 +89,7 @@
             <div class="radio-group">
                 <label><input type="radio" name="mode" value="chords" checked> Chords</label>
                 <label><input type="radio" name="mode" value="scales"> Scales</label>
+                <label><input type="radio" name="mode" value="free"> Free</label>
             </div>
             <div id="chords-controls" class="control-group">
                 <label for="chordInput">Chord:</label>
@@ -104,6 +105,12 @@
                     <select id="scaleSelect"></select>
                 </div>
             </div>
+            <div id="free-controls" class="control-group horizontal" style="display: none;">
+                <label style="display: flex; align-items: center; margin-right: 10px;">
+                    <input type="checkbox" id="showAllNotes" checked style="margin-right: 5px;"> Show all notes
+                </label>
+                <button id="clearButton" style="padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">Clear All</button>
+            </div>
             <div id="midi-controls" class="control-group">
                 <label for="midiSelect">MIDI Output:</label>
                 <select id="midiSelect"></select>
@@ -117,6 +124,9 @@
         const fretboardContainer = document.getElementById('fretboard-container');
         let midiAccess = null;
         let midiOutput = null;
+
+        // Free mode state management
+        let selectedNotes = []; // Array of {stringIndex, fret, note} objects
 
         if (navigator.requestMIDIAccess) {
             navigator.requestMIDIAccess()
@@ -238,6 +248,33 @@
             const b = parseInt(hexcolor.substr(4,2),16);
             const yiq = ((r*299)+(g*587)+(b*114))/1000;
             return (yiq >= 128) ? 'black' : 'white';
+        }
+
+        // Free mode helper functions
+        function toggleNoteSelection(stringIndex, fret) {
+            const note = getNoteAtFret(stringIndex, fret + 1);
+            const existingIndex = selectedNotes.findIndex(
+                n => n.stringIndex === stringIndex && n.fret === fret
+            );
+
+            if (existingIndex >= 0) {
+                // Remove note from selection
+                selectedNotes.splice(existingIndex, 1);
+            } else {
+                // Add note to selection
+                selectedNotes.push({ stringIndex, fret, note });
+            }
+
+            updateDisplay();
+        }
+
+        function clearAllNotes() {
+            selectedNotes = [];
+            updateDisplay();
+        }
+
+        function isNoteSelected(stringIndex, fret) {
+            return selectedNotes.some(n => n.stringIndex === stringIndex && n.fret === fret);
         }
 
         function drawFretboard() {
@@ -379,68 +416,124 @@
             drawFretboard();
             const svg = fretboardContainer.querySelector('svg');
             const mode = document.querySelector('input[name="mode"]:checked').value;
-            let notesToHighlight = [];
 
-            if (mode === 'chords') {
-                const chordInput = document.getElementById('chordInput').value.trim();
-                if (chordInput) {
-                    const parsed = parseChord(chordInput);
-                    if (parsed) {
-                        notesToHighlight = getChordNotes(parsed.root, parsed.quality);
-                    }
-                }
-            } else { // scales
-                const key = document.getElementById('keySelect').value;
-                const scale = document.getElementById('scaleSelect').value;
-                notesToHighlight = getScaleNotes(key, scale);
-            }
-
-            if (notesToHighlight.length === 0) return;
-
-            for (let stringIndex = 0; stringIndex < stringNotes.length; stringIndex++) {
-                for (let fret = -1; fret < numFrets; fret++) {
-                    const noteAtFret = getNoteAtFret(stringIndex, fret + 1);
-                    const foundNote = notesToHighlight.find(n => n.note === noteAtFret);
-
-                    if (foundNote) {
+            if (mode === 'free') {
+                // Free mode: show all positions or only selected, highlight selected ones
+                const showAllNotes = document.getElementById('showAllNotes').checked;
+                for (let stringIndex = 0; stringIndex < stringNotes.length; stringIndex++) {
+                    for (let fret = -1; fret < numFrets; fret++) {
                         const x = fretboardMargin + (fret + 1) * fretWidth - (fretWidth / 2);
                         const y = fretboardHeight - ((stringIndex + 1) * stringSpacing);
-                        
-                        let fillColor = '#444'; // Default color
-                        if (mode === 'chords') {
-                            switch (foundNote.degree) {
-                                case 'root': fillColor = '#e74c3c'; break;
-                                case 'major3rd': case 'minor3rd': fillColor = '#3498db'; break;
-                                case 'perfect5th': case 'diminished5th': case 'augmented5th': fillColor = '#2ecc71'; break;
-                            }
-                        } else { // scales
-                            fillColor = boomwhackerColors[foundNote.note];
+                        const noteAtFret = getNoteAtFret(stringIndex, fret + 1);
+                        const isSelected = isNoteSelected(stringIndex, fret);
+
+                        let fillColor = '#444'; // Default color for unselected
+                        if (isSelected) {
+                            fillColor = boomwhackerColors[noteAtFret];
                         }
 
                         const g = document.createElementNS(svgNS, 'g');
                         g.style.cursor = 'pointer';
-                        g.addEventListener('click', () => playNote(getMidiNote(stringIndex, fret + 1)));
+                        g.addEventListener('click', () => {
+                            toggleNoteSelection(stringIndex, fret);
+                            playNote(getMidiNote(stringIndex, fret + 1));
+                        });
                         svg.appendChild(g);
 
                         const circle = document.createElementNS(svgNS, 'circle');
                         circle.setAttribute('cx', x);
                         circle.setAttribute('cy', y);
                         circle.setAttribute('r', 12);
-                        circle.setAttribute('fill', fillColor);
-                        circle.setAttribute('stroke', '#121212');
-                        circle.setAttribute('stroke-width', '2');
+                        if (showAllNotes || isSelected) {
+                            circle.setAttribute('fill', fillColor);
+                            circle.setAttribute('stroke', '#121212');
+                            circle.setAttribute('stroke-width', '2');
+                        } else {
+                            circle.setAttribute('fill', 'transparent');
+                            circle.setAttribute('stroke', 'transparent');
+                            circle.setAttribute('stroke-width', '0');
+                        }
                         g.appendChild(circle);
 
-                        const text = document.createElementNS(svgNS, 'text');
-                        text.setAttribute('x', x);
-                        text.setAttribute('y', y);
-                        text.setAttribute('dy', '0.35em');
-                        text.setAttribute('text-anchor', 'middle');
-                        text.setAttribute('font-size', '12px');
-                        text.setAttribute('font-weight', 'bold');
-                        text.setAttribute('fill', getContrastYIQ(fillColor));
-                        text.textContent = noteAtFret;
-                        g.appendChild(text);
+                        if (showAllNotes || isSelected) {
+                            const text = document.createElementNS(svgNS, 'text');
+                            text.setAttribute('x', x);
+                            text.setAttribute('y', y);
+                            text.setAttribute('dy', '0.35em');
+                            text.setAttribute('text-anchor', 'middle');
+                            text.setAttribute('font-size', '12px');
+                            text.setAttribute('font-weight', 'bold');
+                            text.setAttribute('fill', getContrastYIQ(fillColor));
+                            text.textContent = noteAtFret;
+                            g.appendChild(text);
+                        }
+                    }
+                }
+            } else {
+                // Chords and Scales modes
+                let notesToHighlight = [];
+
+                if (mode === 'chords') {
+                    const chordInput = document.getElementById('chordInput').value.trim();
+                    if (chordInput) {
+                        const parsed = parseChord(chordInput);
+                        if (parsed) {
+                            notesToHighlight = getChordNotes(parsed.root, parsed.quality);
+                        }
+                    }
+                } else { // scales
+                    const key = document.getElementById('keySelect').value;
+                    const scale = document.getElementById('scaleSelect').value;
+                    notesToHighlight = getScaleNotes(key, scale);
+                }
+
+                if (notesToHighlight.length === 0) return;
+
+                for (let stringIndex = 0; stringIndex < stringNotes.length; stringIndex++) {
+                    for (let fret = -1; fret < numFrets; fret++) {
+                        const noteAtFret = getNoteAtFret(stringIndex, fret + 1);
+                        const foundNote = notesToHighlight.find(n => n.note === noteAtFret);
+
+                        if (foundNote) {
+                            const x = fretboardMargin + (fret + 1) * fretWidth - (fretWidth / 2);
+                            const y = fretboardHeight - ((stringIndex + 1) * stringSpacing);
+
+                            let fillColor = '#444'; // Default color
+                            if (mode === 'chords') {
+                                switch (foundNote.degree) {
+                                    case 'root': fillColor = '#e74c3c'; break;
+                                    case 'major3rd': case 'minor3rd': fillColor = '#3498db'; break;
+                                    case 'perfect5th': case 'diminished5th': case 'augmented5th': fillColor = '#2ecc71'; break;
+                                }
+                            } else { // scales
+                                fillColor = boomwhackerColors[foundNote.note];
+                            }
+
+                            const g = document.createElementNS(svgNS, 'g');
+                            g.style.cursor = 'pointer';
+                            g.addEventListener('click', () => playNote(getMidiNote(stringIndex, fret + 1)));
+                            svg.appendChild(g);
+
+                            const circle = document.createElementNS(svgNS, 'circle');
+                            circle.setAttribute('cx', x);
+                            circle.setAttribute('cy', y);
+                            circle.setAttribute('r', 12);
+                            circle.setAttribute('fill', fillColor);
+                            circle.setAttribute('stroke', '#121212');
+                            circle.setAttribute('stroke-width', '2');
+                            g.appendChild(circle);
+
+                            const text = document.createElementNS(svgNS, 'text');
+                            text.setAttribute('x', x);
+                            text.setAttribute('y', y);
+                            text.setAttribute('dy', '0.35em');
+                            text.setAttribute('text-anchor', 'middle');
+                            text.setAttribute('font-size', '12px');
+                            text.setAttribute('font-weight', 'bold');
+                            text.setAttribute('fill', getContrastYIQ(fillColor));
+                            text.textContent = noteAtFret;
+                            g.appendChild(text);
+                        }
                     }
                 }
             }
@@ -466,9 +559,14 @@
 
             document.querySelectorAll('input[name="mode"]').forEach(radio => {
                 radio.addEventListener('change', (e) => {
-                    const isChords = e.target.value === 'chords';
+                    const mode = e.target.value;
+                    const isChords = mode === 'chords';
+                    const isScales = mode === 'scales';
+                    const isFree = mode === 'free';
+
                     document.getElementById('chords-controls').style.display = isChords ? 'flex' : 'none';
-                    document.getElementById('scales-controls').style.display = isChords ? 'none' : 'flex';
+                    document.getElementById('scales-controls').style.display = isScales ? 'flex' : 'none';
+                    document.getElementById('free-controls').style.display = isFree ? 'flex' : 'none';
                     updateDisplay();
                 });
             });
@@ -476,6 +574,10 @@
             document.getElementById('chordInput').addEventListener('input', updateDisplay);
             keySelect.addEventListener('change', updateDisplay);
             scaleSelect.addEventListener('change', updateDisplay);
+
+            // Free mode event handlers
+            document.getElementById('clearButton').addEventListener('click', clearAllNotes);
+            document.getElementById('showAllNotes').addEventListener('change', updateDisplay);
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -485,4 +587,3 @@
     </script>
 </body>
 </html>
-
